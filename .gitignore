@@ -1,0 +1,36 @@
+*.log
+.DS_Store
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+/public/build
+/public/fonts-manifest.dev.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+_ide_helper.php
+Homestead.json
+Homestead.yaml
+Thumbs.db
+
+# Assets publicados por Filament: los regenera `php artisan filament:upgrade`
+/public/css/filament
+/public/js/filament
+/public/fonts/filament
+
+# Fichas técnicas del fabricante: 88 MB de PDF que no pertenecen al repositorio.
+# Se recuperan con `php artisan icce:fetch-fichas` y en producción viven en S3.
+/public/fichas

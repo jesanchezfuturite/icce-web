@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Zonas privadas o sin valor para el índice
+Disallow: /admin
+Disallow: /portal
+Disallow: /carrito
+Disallow: /checkout
+Disallow: /ingresar
+
+# Los filtros del catálogo viven en la URL para poder compartirse, pero no
+# tiene sentido que el buscador indexe cada combinación posible.
+Disallow: /catalogo?*
+
+Sitemap: https://icce.com.mx/sitemap.xml

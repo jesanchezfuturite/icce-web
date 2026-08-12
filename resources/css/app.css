@@ -1,0 +1,92 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../../app/Livewire/**/*.php';
+
+/*
+ |----------------------------------------------------------------------
+ | Design tokens ICCE
+ |----------------------------------------------------------------------
+ | La paleta sale de los píxeles del logotipo oficial:
+ |   verde  #84C020  -> brand-500
+ |   carbón #0E1100  -> carbon-950
+ | El neutro lleva un tinte verde (hue 75) para que grises y marca
+ | pertenezcan a la misma familia en vez de chocar.
+ */
+@theme {
+    --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+    --color-brand-50: #f7fcee;
+    --color-brand-100: #eaf7d4;
+    --color-brand-200: #d6f0a8;
+    --color-brand-300: #b8e56c;
+    --color-brand-400: #a2de3b;
+    --color-brand-500: #84c021;
+    --color-brand-600: #70a419;
+    --color-brand-700: #578113;
+    --color-brand-800: #446412;
+    --color-brand-900: #374f11;
+    --color-brand-950: #1c2b08;
+
+    --color-carbon-50: #fafbf9;
+    --color-carbon-100: #f3f4f0;
+    --color-carbon-200: #e4e6e0;
+    --color-carbon-300: #ced0c8;
+    --color-carbon-400: #a6a99e;
+    --color-carbon-500: #7e8273;
+    --color-carbon-600: #64685a;
+    --color-carbon-700: #4d5143;
+    --color-carbon-800: #36392d;
+    --color-carbon-900: #24261c;
+    --color-carbon-950: #101207;
+
+    /* Colores semánticos del catálogo y del timeline logístico (REQ-04) */
+    /* Marquesina del carrusel de marcas: la lista se duplica en la vista y se
+       desplaza media anchura, de modo que el bucle no tiene corte visible. */
+    --animate-marquee: marquee 45s linear infinite;
+
+    --color-stock-in: #16a34a;
+    --color-stock-low: #d97706;
+    --color-stock-out: #dc2626;
+    --color-rental: #0ea5e9;
+}
+
+@layer base {
+    body {
+        @apply bg-white text-carbon-900 antialiased;
+    }
+
+    h1, h2, h3, h4 {
+        font-family: var(--font-display);
+        @apply tracking-tight text-balance;
+    }
+
+    /* Evita el parpadeo de los bloques x-show antes de que Alpine arranque */
+    [x-cloak] {
+        display: none !important;
+    }
+
+    ::selection {
+        @apply bg-brand-500 text-carbon-950;
+    }
+}
+
+@keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-marquee { animation: none; }
+}
+
+@utility scale-rule {
+    /* Motivo de marca: escala graduada, guiño a la regla de nivelación láser */
+    background-image: repeating-linear-gradient(
+        90deg,
+        var(--color-brand-500) 0 2px,
+        transparent 2px 16px
+    );
+}
