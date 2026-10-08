@@ -1,7 +1,7 @@
 @php
     $breadcrumbs = ['Catálogo' => route('catalogo.index')];
-    if ($category->parent) {
-        $breadcrumbs[$category->parent->name] = route('catalogo.categoria', $category->parent);
+    foreach ($category->ancestors() as $ancestor) {
+        $breadcrumbs[$ancestor->name] = route('catalogo.categoria', $ancestor);
     }
     $breadcrumbs[$category->name] = null;
 @endphp

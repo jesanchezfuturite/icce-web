@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders\Schemas;
 
+use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\UserRole;
 use App\Models\User;
@@ -32,11 +33,19 @@ class OrderForm
                         TextInput::make('folio')->label('Folio')->disabled(),
                         TextInput::make('order_type')
                             ->label('Tipo')
-                            ->formatStateUsing(fn ($state) => $state instanceof OrderType ? $state->label() : $state)
+                            ->formatStateUsing(fn ($state) => match (true) {
+                                $state instanceof OrderType => $state->label(),
+                                is_string($state) => OrderType::from($state)->label(),
+                                default => $state,
+                            })
                             ->disabled(),
                         TextInput::make('status')
                             ->label('Estatus')
-                            ->formatStateUsing(fn ($state) => $state?->label())
+                            ->formatStateUsing(fn ($state) => match (true) {
+                                $state instanceof OrderStatus => $state->label(),
+                                is_string($state) => OrderStatus::from($state)->label(),
+                                default => $state,
+                            })
                             ->disabled()
                             ->helperText('Se cambia con la acción «Cambiar estatus» del listado.'),
                         Select::make('assigned_to')
@@ -45,7 +54,8 @@ class OrderForm
                                 ->orderBy('name')->pluck('name', 'id'))
                             ->searchable(),
                     ])
-                    ->columns(4),
+                    ->columns(4)
+                    ->columnSpanFull(),
 
                 Section::make('Cliente')
                     ->schema([
@@ -55,7 +65,8 @@ class OrderForm
                         TextInput::make('customer_phone')->label('Teléfono')->disabled(),
                     ])
                     ->columns(4)
-                    ->collapsible(),
+                    ->collapsible()
+                    ->columnSpanFull(),
 
                 Section::make('Partidas')
                     ->description('Ajusta el precio unitario para la propuesta. El precio de lista se conserva.')
@@ -80,7 +91,8 @@ class OrderForm
                             ->deletable(false)
                             ->reorderable(false)
                             ->itemLabel(fn (array $state) => $state['product_name'] ?? null),
-                    ]),
+                    ])
+                    ->columnSpanFull(),
 
                 Section::make('Logística y totales')
                     ->schema([
@@ -90,11 +102,14 @@ class OrderForm
                         DatePicker::make('quote_valid_until')->label('Vigencia de cotización')->displayFormat('d/m/Y'),
 
                         TextInput::make('subtotal')->label('Subtotal')->prefix('$')->disabled(),
-                        TextInput::make('discount_amount')->label('Descuento')->prefix('$')->numeric()->minValue(0),
+                        TextInput::make('discount_amount')->label('Descuento')->prefix('$')->numeric()->minValue(0)
+                            ->default(0)
+                            ->dehydrateStateUsing(fn ($state) => $state ?? 0),
                         TextInput::make('tax_amount')->label('IVA')->prefix('$')->disabled(),
                         TextInput::make('total_amount')->label('Total')->prefix('$')->disabled(),
                     ])
-                    ->columns(4),
+                    ->columns(4)
+                    ->columnSpanFull(),
 
                 Section::make('Notas')
                     ->schema([
@@ -103,7 +118,8 @@ class OrderForm
                             ->helperText('No se comparten con el cliente.'),
                     ])
                     ->columns(2)
-                    ->collapsible(),
+                    ->collapsible()
+                    ->columnSpanFull(),
             ]);
     }
 }

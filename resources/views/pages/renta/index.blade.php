@@ -4,7 +4,7 @@
     <x-ui.page-header
         eyebrow="Maquinaria ligera y equipo especializado"
         title="Renta de equipo para pisos de concreto"
-        lead="Reglas láser y equipo grande con cobertura nacional; equipo menor con entrega local desde nuestro almacén en Monterrey."
+        lead="Regla láser y distribuidora de materiales con cobertura en toda la República; el resto del equipo, solo en Monterrey y su área metropolitana."
         image="images/proyectos/Distribuidor-Somero-Mexico.jpg"
         :breadcrumbs="['Renta de equipos' => null]">
 
@@ -24,10 +24,9 @@
                     <span class="rounded-full bg-brand-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-800">Nacional</span>
                     <span class="text-sm text-carbon-500">{{ $nationalCount }} equipos</span>
                 </div>
-                <h2 class="mt-4 font-display text-xl font-extrabold text-carbon-950">Reglas láser y equipo grande</h2>
+                <h2 class="mt-4 font-display text-xl font-extrabold text-carbon-950">Regla láser y distribuidora de materiales</h2>
                 <p class="mt-2 text-sm leading-relaxed text-carbon-600">
-                    Somero S-940, S-240, SRS y CopperHead. Se movilizan a cualquier estado de la República,
-                    con operador capacitado y calibración previa al arranque.
+                    Se movilizan a cualquier estado de la República. Cada ficha indica si el equipo se renta con operador incluido.
                 </p>
             </div>
 
@@ -38,8 +37,8 @@
                 </div>
                 <h2 class="mt-4 font-display text-xl font-extrabold text-carbon-950">Equipos menores</h2>
                 <p class="mt-2 text-sm leading-relaxed text-carbon-600">
-                    Vibratorios, compactadoras, cortadoras, generadores y torres de iluminación.
-                    Entrega en el área metropolitana de Monterrey.
+                    Allanadoras, vibradores, compactadoras, cortadoras de piso, generadores y torres de iluminación.
+                    Solo en Monterrey y su área metropolitana; el equipo se renta solo, sin aditamentos.
                 </p>
             </div>
         </x-ui.container>

@@ -3,11 +3,11 @@
     <x-ui.page-header
         :eyebrow="$product->brand?->name ?? 'Equipo en renta'"
         :title="$product->name"
-        :breadcrumbs="[
+        :breadcrumbs="array_filter([
             'Renta de equipos' => route('renta.index'),
-            $product->category->name => null,
+            $product->category?->name => null,
             $product->name => null,
-        ]" />
+        ], fn ($url, $label) => $label !== '', ARRAY_FILTER_USE_BOTH)" />
 
     <section class="py-14 lg:py-20">
         <x-ui.container class="grid gap-12 lg:grid-cols-2 lg:gap-16">
@@ -30,6 +30,11 @@
                             {{ $product->rental_coverage->label() }}
                         </span>
                     @endif
+                    @if($product->rental_includes_operator)
+                        <span class="rounded-full bg-brand-500/15 px-2.5 py-1 text-xs font-semibold text-brand-800">
+                            Operador incluido
+                        </span>
+                    @endif
                     <span class="text-xs font-medium text-carbon-400">SKU {{ $product->sku }}</span>
                 </div>
 
@@ -41,7 +46,12 @@
                 <div class="mt-8 rounded-xl border border-carbon-200 bg-carbon-50 p-6">
                     <h2 class="font-display text-base font-bold text-carbon-950">Renta bajo cotización</h2>
                     <p class="mt-2 text-sm leading-relaxed text-carbon-600">
-                        La tarifa depende del periodo, la ubicación de la obra y si requieres operador.
+                        @if($product->rental_includes_operator)
+                            La tarifa depende del periodo y la ubicación de la obra; el operador capacitado ya va incluido.
+                        @else
+                            La tarifa depende del periodo, la ubicación de la obra y si requieres operador.
+                            El equipo se renta solo, sin aditamentos; los accesorios se cotizan por separado.
+                        @endif
                         Mándanos las fechas y te confirmamos disponibilidad y precio el mismo día hábil.
                     </p>
                     <div class="mt-6 flex flex-wrap gap-3">

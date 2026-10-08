@@ -10,29 +10,26 @@
     <section class="py-20 lg:py-24">
         <x-ui.container class="grid gap-12 lg:grid-cols-3">
             <div class="lg:col-span-2 lg:pr-10">
+                <p class="text-xs font-bold uppercase tracking-wider text-carbon-500">Requisitos obligatorios</p>
+
                 @foreach([
                     ['Persona moral', [
-                        'Acta constitutiva y poder del representante legal',
-                        'Constancia de situación fiscal vigente',
-                        'Identificación oficial del representante legal',
-                        'Comprobante de domicilio fiscal (no mayor a 3 meses)',
-                        'Datos de la obra: dirección, contacto en sitio y fechas',
+                        'Acta constitutiva',
+                        'Copia del INE del representante legal',
+                        'Constancia de situación fiscal',
+                        'Comprobante de domicilio',
                     ]],
                     ['Persona física', [
-                        'Identificación oficial vigente',
                         'Constancia de situación fiscal',
-                        'Comprobante de domicilio (no mayor a 3 meses)',
-                        'Datos de la obra y responsable en sitio',
+                        'Copia del INE',
+                        'Comprobante de domicilio',
                     ]],
-                    ['Condiciones generales', [
-                        'Depósito en garantía según el equipo solicitado',
-                        'El periodo de renta corre desde la salida del almacén',
-                        'El combustible y los consumibles corren por cuenta del cliente',
-                        'El equipo se entrega y se recibe con revisión firmada por ambas partes',
-                        'Daños por mal uso se cotizan aparte del costo de renta',
+                    ['Ambos', [
+                        'Cheque de garantía por el monto del equipo',
+                        'INE de la persona que firma los cheques',
                     ]],
                 ] as $index => [$title, $items])
-                    <div @class(['mt-12' => ! $loop->first])>
+                    <div @class(['mt-12' => ! $loop->first, 'mt-6' => $loop->first])>
                         <h2 class="font-display text-xl font-extrabold text-carbon-950 sm:text-2xl">{{ $title }}</h2>
                         <ul class="mt-5 space-y-3">
                             @foreach($items as $item)
@@ -47,10 +44,6 @@
                     </div>
                 @endforeach
 
-                <p class="mt-12 rounded-xl border border-amber-300/60 bg-amber-50 p-5 text-sm leading-relaxed text-amber-900">
-                    Este listado es la base del formulario adaptativo de solicitud (REQ-07). El contenido definitivo
-                    lo confirma ICCE antes de salir a producción.
-                </p>
             </div>
 
             <aside class="lg:sticky lg:top-32 lg:self-start">

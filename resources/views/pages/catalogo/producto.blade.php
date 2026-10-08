@@ -2,10 +2,10 @@
     use App\Enums\PurchaseMode;
 
     $breadcrumbs = ['Catálogo' => route('catalogo.index')];
-    if ($product->category?->parent) {
-        $breadcrumbs[$product->category->parent->name] = route('catalogo.categoria', $product->category->parent);
-    }
     if ($product->category) {
+        foreach ($product->category->ancestors() as $ancestor) {
+            $breadcrumbs[$ancestor->name] = route('catalogo.categoria', $ancestor);
+        }
         $breadcrumbs[$product->category->name] = route('catalogo.categoria', $product->category);
     }
     $breadcrumbs[$product->name] = null;

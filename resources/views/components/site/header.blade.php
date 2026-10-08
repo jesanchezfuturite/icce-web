@@ -78,6 +78,16 @@
                                                     <li>
                                                         <a href="/catalogo/{{ $child['slug'] }}"
                                                            class="text-sm text-carbon-600 transition hover:text-brand-700">{{ $child['name'] }}</a>
+                                                        @if(! empty($child['children']))
+                                                            <ul class="mt-1 space-y-1 border-l border-carbon-200 pl-3">
+                                                                @foreach($child['children'] as $leaf)
+                                                                    <li>
+                                                                        <a href="/catalogo/{{ $leaf['slug'] }}"
+                                                                           class="text-xs text-carbon-500 transition hover:text-brand-700">{{ $leaf['name'] }}</a>
+                                                                    </li>
+                                                                @endforeach
+                                                            </ul>
+                                                        @endif
                                                     </li>
                                                 @endforeach
                                             </ul>

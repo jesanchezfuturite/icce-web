@@ -33,3 +33,8 @@ Thumbs.db
 # Fichas técnicas del fabricante: 88 MB de PDF que no pertenecen al repositorio.
 # Se recuperan con `php artisan icce:fetch-fichas` y en producción viven en S3.
 /public/fichas
+
+# Ajustes de Docker específicos de una máquina (convención oficial de Compose:
+# se combina solo con docker-compose.yml, nunca se sube).
+docker-compose.override.yml
+php-local-perf.ini

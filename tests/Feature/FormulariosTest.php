@@ -213,7 +213,9 @@ class FormulariosTest extends TestCase
 
         // Los campos propios de la cobertura quedan en la nota del agente
         $this->assertStringContainsString('flete', $solicitud->notes);
-        $this->assertStringContainsString('operador', $solicitud->notes);
+        // En cobertura nacional ya no se pregunta por operador: aunque el estado
+        // viniera marcado, no debe quedar en la nota del agente.
+        $this->assertStringNotContainsString('operador', $solicitud->notes);
 
         Mail::assertSent(RentalRequestNotification::class);
         Mail::assertSent(RentalRequestReceivedMail::class, fn ($m) => $m->hasTo('rodrigo@vertice.mx'));

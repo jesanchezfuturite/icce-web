@@ -45,6 +45,7 @@ class CatalogSeeder extends Seeder
                     'is_rental' => $row['is_rental'],
                     'is_for_sale' => $row['is_for_sale'],
                     'rental_coverage' => $row['rental_coverage'],
+                    'rental_includes_operator' => $row['rental_coverage'] === 'national',
                     'tech_sheet_pdf' => $row['tech_sheet_pdf'],
                     'is_active' => true,
                     'is_featured' => $count % 17 === 0,

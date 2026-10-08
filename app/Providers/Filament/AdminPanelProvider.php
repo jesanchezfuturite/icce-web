@@ -33,6 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->darkModeBrandLogo(asset('images/marca/logo-icce.png'))
             ->brandLogoHeight('1.75rem')
             ->favicon(asset('images/marca/favicon.png'))
+            ->sidebarFullyCollapsibleOnDesktop()
             ->colors([
                 // Verde de marca ICCE (#84C020) como primario del panel
                 'primary' => Color::hex('#84c021'),

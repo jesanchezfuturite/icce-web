@@ -31,8 +31,6 @@ class OrderResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $recordRouteKeyName = 'id';
-
     public static function form(Schema $schema): Schema
     {
         return OrderForm::configure($schema);

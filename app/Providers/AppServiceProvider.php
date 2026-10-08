@@ -57,19 +57,28 @@ class AppServiceProvider extends ServiceProvider
     {
         View::composer(['components.site.header', 'components.site.footer'], function ($view) {
             $view->with('navCategories', Cache::remember(
-                'nav.categories',
+                Category::NAV_CACHE_KEY,
                 now()->addHour(),
                 fn () => Category::query()
                     ->roots()
                     ->active()
-                    ->with(['children' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
+                    ->with([
+                        'children' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
+                        'children.children' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
+                    ])
                     ->orderBy('sort_order')
                     ->get()
                     ->map(fn (Category $root) => [
                         'name' => $root->name,
                         'slug' => $root->slug,
                         'children' => $root->children
-                            ->map(fn (Category $child) => ['name' => $child->name, 'slug' => $child->slug])
+                            ->map(fn (Category $child) => [
+                                'name' => $child->name,
+                                'slug' => $child->slug,
+                                'children' => $child->children
+                                    ->map(fn (Category $leaf) => ['name' => $leaf->name, 'slug' => $leaf->slug])
+                                    ->all(),
+                            ])
                             ->all(),
                     ])
                     ->all(),

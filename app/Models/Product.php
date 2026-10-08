@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'brand_id', 'category_id', 'sku', 'name', 'slug', 'short_description', 'description',
     'price', 'compare_at_price', 'unit', 'stock_qty', 'low_stock_threshold',
-    'max_direct_purchase', 'is_on_demand', 'is_rental', 'is_for_sale', 'rental_coverage',
+    'max_direct_purchase', 'is_on_demand', 'is_rental', 'is_for_sale', 'rental_coverage', 'rental_includes_operator',
     'tech_sheet_pdf', 'safety_sheet_pdf', 'specs',
     'is_active', 'is_featured', 'meta_title', 'meta_description',
 ])]
@@ -32,6 +32,7 @@ class Product extends Model
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'rental_coverage' => RentalCoverage::class,
+            'rental_includes_operator' => 'boolean',
         ];
     }
 

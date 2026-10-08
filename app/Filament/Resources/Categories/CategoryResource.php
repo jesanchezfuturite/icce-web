@@ -31,8 +31,6 @@ class CategoryResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    // El modelo resuelve por slug en el sitio público; aquí se fija el id
-    protected static ?string $recordRouteKeyName = 'id';
 
     public static function form(Schema $schema): Schema
     {

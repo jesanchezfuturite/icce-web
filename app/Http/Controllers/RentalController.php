@@ -21,7 +21,7 @@ class RentalController extends Controller
             ->with(['brand', 'category', 'primaryImage'])
             ->orderBy('name')
             ->get()
-            ->groupBy(fn (Product $product) => $product->category->name);
+            ->groupBy(fn (Product $product) => $product->category?->name ?? 'Sin categoría');
 
         return view('pages.renta.index', [
             'categories' => Category::where('slug', 'renta-de-equipos')
@@ -39,14 +39,16 @@ class RentalController extends Controller
 
         return view('pages.renta.equipo', [
             'product' => $product->load('brand', 'category', 'images'),
-            'related' => Product::query()
-                ->active()
-                ->rentals()
-                ->where('category_id', $product->category_id)
-                ->where('id', '!=', $product->id)
-                ->with('primaryImage')
-                ->take(3)
-                ->get(),
+            'related' => $product->category_id === null
+                ? collect()
+                : Product::query()
+                    ->active()
+                    ->rentals()
+                    ->where('category_id', $product->category_id)
+                    ->where('id', '!=', $product->id)
+                    ->with(['brand', 'primaryImage'])
+                    ->take(3)
+                    ->get(),
         ]);
     }
 

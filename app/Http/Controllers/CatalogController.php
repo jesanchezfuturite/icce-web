@@ -32,7 +32,7 @@ class CatalogController extends Controller
         // Livewire `catalogo.explorador`, que además sincroniza su estado con
         // la URL para que un resultado filtrado sea compartible e indexable.
         return view('pages.catalogo.categoria', [
-            'category' => $category->load('parent', 'children'),
+            'category' => $category->load('children'),
         ]);
     }
 
@@ -43,14 +43,17 @@ class CatalogController extends Controller
         abort_unless($product->is_active && ! $product->is_rental, 404);
 
         return view('pages.catalogo.producto', [
-            'product' => $product->load('brand', 'category.parent', 'images'),
-            'related' => Product::query()
-                ->active()
-                ->where('category_id', $product->category_id)
-                ->where('id', '!=', $product->id)
-                ->with(['brand', 'primaryImage'])
-                ->take(4)
-                ->get(),
+            'product' => $product->load('brand', 'category', 'images'),
+            // Sin categoría no hay "misma familia" que mostrar.
+            'related' => $product->category_id === null
+                ? collect()
+                : Product::query()
+                    ->active()
+                    ->where('category_id', $product->category_id)
+                    ->where('id', '!=', $product->id)
+                    ->with(['brand', 'primaryImage'])
+                    ->take(4)
+                    ->get(),
         ]);
     }
 }

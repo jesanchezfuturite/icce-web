@@ -90,7 +90,15 @@ new class extends Component
     #[Computed]
     public function equipmentOptions()
     {
-        return Product::rentals()->active()->orderBy('name')->get(['id', 'name', 'slug', 'rental_coverage']);
+        return Product::rentals()->active()->orderBy('name')
+            ->get(['id', 'name', 'slug', 'rental_coverage', 'rental_includes_operator']);
+    }
+
+    /** El equipo elegido ya se renta con operador: no hay nada que pedir. */
+    #[Computed]
+    public function includesOperator(): bool
+    {
+        return (bool) $this->equipmentOptions()->firstWhere('id', $this->productId)?->rental_includes_operator;
     }
 
     public function updatedProductId($value): void
@@ -155,7 +163,8 @@ new class extends Component
         // el agente los necesita, pero no justifican una columna cada uno.
         $detalles = array_filter([
             $this->isNational() && $this->needsFreight ? 'Requiere maniobra y flete a sitio.' : null,
-            $this->needsOperator ? 'Requiere operador de ICCE.' : null,
+            // Sólo se pregunta en cobertura local y con equipos que no lo incluyen
+            $this->needsOperator && ! $this->isNational() && ! $this->includesOperator() ? 'Requiere operador de ICCE.' : null,
             $this->siteAccess !== '' ? 'Acceso a sitio: '.$this->siteAccess : null,
             ! $this->isNational() ? ($this->delivery === 'recoge'
                 ? 'El cliente recoge en almacén.'
@@ -305,11 +314,6 @@ new class extends Component
                                    class="mt-0.5 size-4 shrink-0 rounded border-carbon-300 accent-brand-600">
                             Necesito que ICCE resuelva el flete y la maniobra en sitio
                         </label>
-                        <label class="flex items-start gap-2.5 text-sm text-carbon-700">
-                            <input type="checkbox" wire:model="needsOperator"
-                                   class="mt-0.5 size-4 shrink-0 rounded border-carbon-300 accent-brand-600">
-                            Necesito operador capacitado de ICCE
-                        </label>
                     </div>
 
                     <div class="mt-5">
@@ -344,11 +348,13 @@ new class extends Component
                         @endforeach
                     </div>
 
-                    <label class="mt-4 flex items-start gap-2.5 text-sm text-carbon-700">
-                        <input type="checkbox" wire:model="needsOperator"
-                               class="mt-0.5 size-4 shrink-0 rounded border-carbon-300 accent-brand-600">
-                        Necesito operador capacitado de ICCE
-                    </label>
+                    @unless($this->includesOperator())
+                        <label class="mt-4 flex items-start gap-2.5 text-sm text-carbon-700">
+                            <input type="checkbox" wire:model="needsOperator"
+                                   class="mt-0.5 size-4 shrink-0 rounded border-carbon-300 accent-brand-600">
+                            Necesito operador capacitado de ICCE
+                        </label>
+                    @endunless
                 </div>
             @endif
 
