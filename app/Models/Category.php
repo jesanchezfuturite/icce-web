@@ -20,7 +20,7 @@ class Category extends Model
     public const MAX_DEPTH = 4;
 
     /** Clave del menú del catálogo que cachea AppServiceProvider. */
-    public const NAV_CACHE_KEY = 'nav.categories.v2';
+    public const NAV_CACHE_KEY = 'nav.categories.v3';
 
     protected static function booted(): void
     {
@@ -148,6 +148,21 @@ class Category extends Model
             ->all();
 
         // Orden alfabético por ruta: las hijas quedan agrupadas bajo su padre.
+        asort($options, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return $options;
+    }
+
+    /**
+     * Todas las categorías con su ruta completa, para asignarle una a un producto
+     * (a diferencia de `parentOptionsFor`, aquí cuenta cualquier nivel).
+     *
+     * @return array<int, string> id => «Materiales › Selladores», en orden alfabético
+     */
+    public static function optionsWithPath(): array
+    {
+        $options = array_map(fn (array $names) => implode(' › ', $names), static::pathsById());
+
         asort($options, SORT_NATURAL | SORT_FLAG_CASE);
 
         return $options;

@@ -80,7 +80,8 @@ class Product extends Model
      */
     public function purchaseModeFor(int $quantity): PurchaseMode
     {
-        if (! $this->is_for_sale || $this->is_on_demand) {
+        // Sin precio no hay nada que cobrar: lo confirma un agente
+        if (! $this->is_for_sale || $this->is_on_demand || (float) $this->price <= 0) {
             return PurchaseMode::Quote;
         }
 

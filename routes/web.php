@@ -36,7 +36,7 @@ Route::get('/producto/{product:slug}', [CatalogController::class, 'show'])->name
 // 3.4 / 3.5 — Carrito híbrido y checkout
 Route::view('/carrito', 'pages.carrito')->name('carrito');
 Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout');
-Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:30,1')->name('checkout.store');
 Route::get('/checkout/gracias', [CheckoutController::class, 'gracias'])->name('checkout.gracias');
 
 // 4.0 — Renta de equipos
@@ -67,6 +67,7 @@ Route::post('/salir', [LoginController::class, 'destroy'])->name('logout');
 Route::middleware('auth')->prefix('portal')->name('portal.')->group(function () {
     Route::get('/', [PortalController::class, 'index'])->name('index');
     Route::get('/pedido/{order:folio}', [PortalController::class, 'show'])->name('pedido');
+    Route::post('/pedido/{order:folio}/pagar', [PortalController::class, 'pay'])->name('pagar');
 });
 
 // SEO

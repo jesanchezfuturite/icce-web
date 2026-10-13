@@ -38,7 +38,7 @@ español**. Es la lengua del cliente y del equipo que va a operar el sistema.
 ```bash
 UID=$(id -u) GID=$(id -g) docker compose up -d      # levantar
 docker compose exec app php artisan <lo-que-sea>    # artisan
-docker compose exec app php artisan test            # 123 pruebas
+docker compose exec app php artisan test            # ~190 pruebas
 docker compose exec app ./vendor/bin/pint           # formato, correr siempre
 docker compose run --rm node npm run build          # recompilar CSS/JS
 docker compose exec app php artisan migrate:fresh --seed
@@ -48,7 +48,7 @@ El sitio queda en `http://localhost` (y `:8080` como respaldo), el backoffice en
 `/admin` y Mailpit en `:8025`.
 
 **Después de tocar Blade, rutas o config:** `php artisan optimize:clear`.
-**Después de tocar clases de Tailwind:** recompilar con el contenedor `node`.
+**Después de tocar clases de Tailwind:** recompilar con el contenedor `node`. Si falla con `Cannot find native binding` (el `node_modules` trae el binding de Windows), compilar con el Node del host: `npm run build`.
 
 ### Puesta en marcha en una máquina nueva
 
@@ -103,6 +103,29 @@ no ocurren: el estatus, la marca de tiempo del hito, el asiento en
 `order_status_histories` y el aviso al cliente. **Nunca** cambiar `status` con un
 `update()` suelto: el timeline del portal quedaría mintiendo, que es justo el
 problema que el portal venía a resolver.
+
+### Una cotización autorizada se paga una sola vez desde el portal
+
+Flujo: `Pending` → (agente envía precio) `Quoted` → (agente «Habilitar pago»)
+`PendingPayment` → (cliente paga) `Paid`. `Order::canBePaidOnline()` es la única regla
+de «¿puede pagar?»: cotización, en `PendingPayment`, vigente (`quote_valid_until`),
+con total > 0 y sin un SPEI ya registrado. `App\Actions\Orders\PayQuote` bloquea la
+orden y revalida dentro de la transacción, así que dos clics o dos pestañas no cobran
+dos veces; un rechazo no gasta la autorización. El descuento vive en la orden, nunca en
+el catálogo: no se publica ningún precio especial.
+`AuthorizeQuote` (admin: «Habilitar pago») y `RegisterOfflinePayment` (admin:
+«Registrar pago», para transferencia/efectivo: pasa directo a `Paid` sin pasar por
+`PendingPayment`) también entran por `ChangeOrderStatus`. Pagar una cotización **no
+descuenta existencia** (las cotizaciones no la apartan): el surtido lo confirma ICCE.
+
+### Comprar o cotizar exige cuenta, pero se pide al final
+
+El carrito se arma sin sesión. En el checkout, un visitante ve «Crea tu cuenta»
+(contraseña + confirmación) o «Inicia sesión» (`/ingresar?volver=checkout`, regresa
+al checkout con el carrito). `CheckoutController::store` crea el `User` (rol cliente)
+**dentro de la misma transacción** que las órdenes, así que no queda una cuenta a
+medias. No hay verificación de correo ni vinculación automática de pedidos viejos
+hechos como invitado con ese mismo correo.
 
 ### La pasarela vive tras una interfaz
 
@@ -274,7 +297,7 @@ Contraseña **`Icce2026`**. Las crea `UserSeeder`, **sólo para entorno local**.
 
 1. Credenciales de Stripe u Openpay para el cobro real (bloqueado por el cliente).
 2. Datos de facturación y direcciones en el portal (7.3).
-3. Aprobar y pagar una cotización en línea — va junto con la pasarela.
+3. Cobro real de una cotización en línea: el flujo ya existe y funciona con la pasarela simulada; falta la pasarela real (punto 1).
 4. Conexión al ERP de inventarios.
 5. Las **27 rutas sin mapeo 301**, resolubles desde el backoffice.
 6. Auditoría de accesibilidad y rendimiento sobre lo construido.

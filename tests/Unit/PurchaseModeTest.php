@@ -15,6 +15,7 @@ class PurchaseModeTest extends TestCase
     private function product(array $attributes = []): Product
     {
         return new Product([
+            'price' => 500,
             'stock_qty' => 100,
             'max_direct_purchase' => 10,
             'is_on_demand' => false,
@@ -62,6 +63,12 @@ class PurchaseModeTest extends TestCase
         $product = $this->product(['is_for_sale' => false, 'is_rental' => true]);
 
         $this->assertSame(PurchaseMode::Quote, $product->purchaseModeFor(1));
+    }
+
+    public function test_un_producto_sin_precio_nunca_se_cobra_en_linea(): void
+    {
+        $this->assertSame(PurchaseMode::Quote, $this->product(['price' => 0])->purchaseModeFor(1));
+        $this->assertSame(PurchaseMode::Quote, $this->product(['price' => null])->purchaseModeFor(1));
     }
 
     public function test_rechaza_cantidades_no_positivas(): void

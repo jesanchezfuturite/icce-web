@@ -111,12 +111,38 @@ class CategoriasArbolTest extends TestCase
         );
     }
 
-    public function test_el_menu_del_catalogo_muestra_hasta_el_tercer_nivel(): void
+    public function test_el_menu_del_catalogo_muestra_los_cuatro_niveles(): void
     {
         $this->get('/contacto')
             ->assertOk()
             ->assertSee('Evaluacion de regularidad')
-            ->assertSee('/catalogo/evaluacion', false);
+            ->assertSee('/catalogo/evaluacion', false)
+            ->assertSee('/catalogo/numeros-f', false);
+    }
+
+    public function test_solo_las_categorias_con_hijas_llevan_flecha_en_el_menu(): void
+    {
+        $html = $this->get('/contacto')->assertOk()->getContent();
+        $flecha = fn (string $nombre) => substr_count($html, 'aria-label="Mostrar subcategorías de '.$nombre.'"');
+
+        // Con hijas: flecha en escritorio y en el menú móvil
+        $this->assertSame(2, $flecha('Laboratorio'));
+        $this->assertSame(2, $flecha('Evaluacion de regularidad'));
+
+        // La principal es el encabezado de su columna en escritorio (enlace directo):
+        // sólo se pliega en el menú móvil
+        $this->assertSame(1, $flecha('Servicios'));
+
+        // Sin hijas: un solo clic entra, no lleva flecha
+        $this->assertSame(0, $flecha('Numeros F'));
+    }
+
+    public function test_el_encabezado_ya_no_dibuja_la_linea_verde_graduada(): void
+    {
+        preg_match('/<header.*?<\/header>/s', $this->get('/contacto')->assertOk()->getContent(), $encabezado);
+
+        $this->assertNotEmpty($encabezado);
+        $this->assertStringNotContainsString('scale-rule', $encabezado[0]);
     }
 
     public function test_crear_una_categoria_actualiza_el_menu_sin_esperar_al_cache(): void

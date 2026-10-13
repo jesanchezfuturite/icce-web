@@ -4,19 +4,34 @@ namespace App\Filament\Resources\Orders\Pages;
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Exports\OrdersExport;
 use App\Filament\Resources\Orders\OrderResource;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ListOrders extends ListRecords
 {
     protected static string $resource = OrderResource::class;
 
-    /** Sin acción de crear: las órdenes nacen del checkout, no del backoffice. */
+    /**
+     * Sin acción de crear: las órdenes nacen del checkout, no del backoffice.
+     * Sí se puede descargar lo que se está viendo.
+     */
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            Action::make('descargarExcel')
+                ->label('Descargar Excel')
+                ->icon('heroicon-m-arrow-down-tray')
+                ->color('gray')
+                ->tooltip('Descarga lo que ves: la pestaña activa, los filtros y la búsqueda')
+                ->action(fn () => $this->descargarExcel()),
+        ];
     }
 
     /**
@@ -41,6 +56,11 @@ class ListOrders extends ListRecords
                 ->badge(fn () => $this->countFor(fn (Builder $q) => $q->where('order_type', OrderType::Quote)))
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('order_type', OrderType::Quote)),
 
+            'por_cobrar' => Tab::make('Pendientes de pago')
+                ->badge(fn () => $this->countFor(fn (Builder $q) => $q->where('status', OrderStatus::PendingPayment)))
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', OrderStatus::PendingPayment)),
+
             'en_proceso' => Tab::make('En proceso')
                 ->badge(fn () => $this->countFor(fn (Builder $q) => $q->whereIn('status', $enProceso)))
                 ->badgeColor('warning')
@@ -51,6 +71,63 @@ class ListOrders extends ListRecords
 
             'todos' => Tab::make('Todos'),
         ];
+    }
+
+    /**
+     * Excel con lo que muestra el listado: pestaña activa, filtros (incluido el
+     * rango de fechas) y búsqueda. Si no hay nada, avisa en vez de bajar un
+     * archivo vacío.
+     */
+    public function descargarExcel(): ?StreamedResponse
+    {
+        $ruta = sys_get_temp_dir().DIRECTORY_SEPARATOR.'pedidos-'.Str::uuid().'.xlsx';
+
+        try {
+            $total = (new OrdersExport)->write($this->getFilteredSortedTableQuery(), $ruta);
+        } catch (\Throwable $e) {
+            @unlink($ruta);
+
+            throw $e;
+        }
+
+        if ($total === 0) {
+            @unlink($ruta);
+
+            Notification::make()
+                ->warning()
+                ->title('No hay pedidos para descargar')
+                ->body('Con la pestaña, los filtros y la búsqueda actuales no hay resultados.')
+                ->send();
+
+            return null;
+        }
+
+        return response()->streamDownload(function () use ($ruta): void {
+            readfile($ruta);
+            @unlink($ruta);
+        }, $this->nombreDelArchivo(), [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /** `pedidos-y-cotizaciones_por-atender_2026-09-01_a_2026-09-30.xlsx` */
+    private function nombreDelArchivo(): string
+    {
+        $pestanas = $this->getTabs();
+        $activa = $this->activeTab ?? $this->getDefaultActiveTab();
+        $etiqueta = isset($pestanas[$activa]) ? $pestanas[$activa]->getLabel() : 'todos';
+
+        $desde = data_get($this->tableFilters, 'fecha.desde');
+        $hasta = data_get($this->tableFilters, 'fecha.hasta');
+
+        $rango = match (true) {
+            filled($desde) && filled($hasta) => "{$desde}_a_{$hasta}",
+            filled($desde) => "desde_{$desde}",
+            filled($hasta) => "hasta_{$hasta}",
+            default => 'al_'.now()->toDateString(),
+        };
+
+        return 'pedidos-y-cotizaciones_'.Str::slug((string) $etiqueta).'_'.$rango.'.xlsx';
     }
 
     private function countFor(callable $filter): int

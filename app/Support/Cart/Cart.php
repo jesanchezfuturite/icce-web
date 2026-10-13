@@ -16,6 +16,9 @@ class Cart
 {
     private const KEY = 'icce.cart';
 
+    /** Tope por línea: evita cantidades absurdas que desbordarían los importes. */
+    public const MAX_QUANTITY = 9999;
+
     /** @var Collection<int, CartLine>|null */
     private ?Collection $resolved = null;
 
@@ -32,7 +35,7 @@ class Cart
         }
 
         $items = $this->rawItems();
-        $items[$product->id] = ($items[$product->id] ?? 0) + $quantity;
+        $items[$product->id] = min(($items[$product->id] ?? 0) + $quantity, self::MAX_QUANTITY);
 
         $this->persist($items);
     }
@@ -44,7 +47,7 @@ class Cart
         if ($quantity < 1) {
             unset($items[$productId]);
         } else {
-            $items[$productId] = $quantity;
+            $items[$productId] = min($quantity, self::MAX_QUANTITY);
         }
 
         $this->persist($items);

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
+use App\Models\Category;
 use App\Models\Product;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -13,6 +14,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -26,6 +28,9 @@ class ProductsTable
 {
     public static function configure(Table $table): Table
     {
+        // Una sola consulta por carga de la tabla, no una por renglón.
+        $categorias = Category::optionsWithPath();
+
         return $table
             // Las columnas leen marca, categoría e imagen: se precargan para no
             // disparar una consulta por renglón (y porque preventLazyLoading
@@ -52,9 +57,22 @@ class ProductsTable
                     ->wrap()
                     ->limit(60),
 
-                TextColumn::make('category.name')
+                // Se cambia en línea, sin abrir la ficha: lista con buscador porque
+                // son muchas. Un producto puede quedar «Sin categoría».
+                SelectColumn::make('category_id')
                     ->label('Categoría')
-                    ->badge()
+                    ->options($categorias)
+                    ->native(false)
+                    ->searchableOptions()
+                    ->optionsLimit(200)
+                    ->selectablePlaceholder()
+                    ->placeholder('Sin categoría')
+                    ->extraInputAttributes(['class' => 'min-w-56'])
+                    ->afterStateUpdated(fn (Product $record, $state) => Notification::make()
+                        ->success()
+                        ->title("{$record->sku} movido")
+                        ->body($state ? 'Categoría: '.($categorias[(int) $state] ?? '—') : 'Ahora está sin categoría.')
+                        ->send())
                     ->toggleable(),
 
                 TextColumn::make('price')

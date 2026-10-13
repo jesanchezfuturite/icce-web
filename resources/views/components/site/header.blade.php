@@ -50,8 +50,9 @@
             </a>
 
             <nav class="hidden items-center gap-1 lg:flex" aria-label="Principal">
-                {{-- Catálogo: mega menú --}}
-                <div @mouseenter="mega = true" @mouseleave="mega = false" class="relative">
+                {{-- Catálogo: mega menú. Sin `relative` en este contenedor: el panel se
+                     ancla a la barra completa para poder ocupar todo el ancho. --}}
+                <div @mouseenter="mega = true" @mouseleave="mega = false">
                     <a href="/catalogo"
                        class="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 hover:text-white"
                        :class="mega && 'bg-white/10 text-white'">
@@ -63,47 +64,38 @@
                     </a>
 
                     <div x-show="mega" x-cloak x-transition.opacity.duration.150ms
-                         class="absolute left-1/2 top-full w-[54rem] -translate-x-1/2 pt-3">
-                        <div class="overflow-hidden rounded-2xl border border-carbon-200 bg-white shadow-2xl shadow-carbon-950/20">
-                            <div class="grid grid-cols-3 gap-x-8 gap-y-7 p-8">
-                                @foreach($catalog as $root)
-                                    <div>
-                                        <a href="/catalogo/{{ $root['slug'] }}"
-                                           class="font-display text-sm font-bold uppercase tracking-wide text-carbon-950 hover:text-brand-700">
-                                            {{ $root['name'] }}
-                                        </a>
-                                        @if($root['children'])
-                                            <ul class="mt-3 space-y-1.5">
-                                                @foreach($root['children'] as $child)
-                                                    <li>
-                                                        <a href="/catalogo/{{ $child['slug'] }}"
-                                                           class="text-sm text-carbon-600 transition hover:text-brand-700">{{ $child['name'] }}</a>
-                                                        @if(! empty($child['children']))
-                                                            <ul class="mt-1 space-y-1 border-l border-carbon-200 pl-3">
-                                                                @foreach($child['children'] as $leaf)
-                                                                    <li>
-                                                                        <a href="/catalogo/{{ $leaf['slug'] }}"
-                                                                           class="text-xs text-carbon-500 transition hover:text-brand-700">{{ $leaf['name'] }}</a>
-                                                                    </li>
-                                                                @endforeach
-                                                            </ul>
-                                                        @endif
-                                                    </li>
-                                                @endforeach
-                                            </ul>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
+                         class="absolute inset-x-0 top-full pt-3">
+                        <x-ui.container size="wide">
+                            {{-- Las categorías principales van una al lado de otra; si la pantalla no
+                                 alcanza para todas, se acomodan en filas y el panel se desplaza. --}}
+                            <div class="max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain rounded-2xl border border-carbon-200 bg-white shadow-2xl shadow-carbon-950/20">
+                                <div class="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-x-6 gap-y-8 p-6 xl:p-8">
+                                    @foreach($catalog as $root)
+                                        <div>
+                                            <a href="/catalogo/{{ $root['slug'] }}"
+                                               class="font-display text-sm font-bold uppercase tracking-wide text-carbon-950 hover:text-brand-700">
+                                                {{ $root['name'] }}
+                                            </a>
+                                            @if($root['children'])
+                                                <ul class="mt-3 space-y-1.5">
+                                                    @foreach($root['children'] as $child)
+                                                        <x-site.nav-item :item="$child" :level="2" />
+                                                    @endforeach
+                                                </ul>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
 
-                            <div class="flex items-center justify-between gap-4 border-t border-carbon-200 bg-carbon-50 px-8 py-5">
-                                <p class="text-sm text-carbon-600">
-                                    <span class="font-semibold text-carbon-950">¿Pedido de volumen?</span>
-                                    Arma tu lista y recibe una cotización con precio de proyecto.
-                                </p>
-                                <x-ui.button href="/cotizacion" size="sm">Solicitar cotización</x-ui.button>
+                                <div class="sticky bottom-0 flex items-center justify-between gap-4 border-t border-carbon-200 bg-carbon-50 px-6 py-4 xl:px-8">
+                                    <p class="text-sm text-carbon-600">
+                                        <span class="font-semibold text-carbon-950">¿Pedido de volumen?</span>
+                                        Arma tu lista y recibe una cotización con precio de proyecto.
+                                    </p>
+                                    <x-ui.button href="/cotizacion" size="sm">Solicitar cotización</x-ui.button>
+                                </div>
                             </div>
-                        </div>
+                        </x-ui.container>
                     </div>
                 </div>
 
@@ -160,8 +152,6 @@
             </x-ui.container>
         </div>
 
-        {{-- Motivo de escala: guiño a la regla de nivelación láser --}}
-        <div class="scale-rule h-1 w-full opacity-70"></div>
     </div>
 
     {{-- Menú móvil --}}
@@ -185,10 +175,7 @@
                 <p class="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">Catálogo</p>
                 <ul class="mb-8 space-y-1">
                     @foreach($navCategories as $root)
-                        <li>
-                            <a href="/catalogo/{{ $root['slug'] }}"
-                               class="block rounded-lg px-3 py-2.5 font-display font-semibold transition hover:bg-white/10">{{ $root['name'] }}</a>
-                        </li>
+                        <x-site.nav-item :item="$root" :level="1" :mobile="true" />
                     @endforeach
                 </ul>
 

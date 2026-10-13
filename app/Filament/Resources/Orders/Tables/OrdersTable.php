@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Actions\Orders\AuthorizeQuote;
 use App\Actions\Orders\ChangeOrderStatus;
+use App\Actions\Orders\RegisterOfflinePayment;
 use App\Actions\Orders\SendQuote;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
@@ -23,6 +25,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrdersTable
@@ -97,6 +100,31 @@ class OrdersTable
                     ->options(fn () => User::whereIn('role', [UserRole::Sales, UserRole::Admin])
                         ->orderBy('name')->pluck('name', 'id')),
 
+                // Rango por fecha del pedido. Lo respeta también la descarga a Excel.
+                Filter::make('fecha')
+                    ->label('Fecha del pedido')
+                    ->schema([
+                        DatePicker::make('desde')->label('Desde')->displayFormat('d/m/Y'),
+                        DatePicker::make('hasta')->label('Hasta')->displayFormat('d/m/Y'),
+                    ])
+                    ->columns(2)
+                    ->query(fn (Builder $query, array $data) => $query
+                        ->when($data['desde'] ?? null, fn (Builder $q, $dia) => $q->whereDate('orders.created_at', '>=', $dia))
+                        ->when($data['hasta'] ?? null, fn (Builder $q, $dia) => $q->whereDate('orders.created_at', '<=', $dia)))
+                    ->indicateUsing(function (array $data): array {
+                        $indicadores = [];
+
+                        if ($data['desde'] ?? null) {
+                            $indicadores[] = 'Desde '.Carbon::parse($data['desde'])->format('d/m/Y');
+                        }
+
+                        if ($data['hasta'] ?? null) {
+                            $indicadores[] = 'Hasta '.Carbon::parse($data['hasta'])->format('d/m/Y');
+                        }
+
+                        return $indicadores;
+                    }),
+
                 // El parámetro debe llamarse $query: Filament inyecta por nombre
                 // y, si no lo reconoce, intenta resolver el tipo del contenedor.
                 Filter::make('atrasados')
@@ -108,6 +136,8 @@ class OrdersTable
             ->recordActions([
                 self::changeStatusAction(),
                 self::sendQuoteAction(),
+                self::authorizeQuoteAction(),
+                self::registerPaymentAction(),
                 ActionGroup::make([
                     EditAction::make()->label('Ver detalle'),
                     self::downloadQuoteAction(),
@@ -219,6 +249,116 @@ class OrdersTable
                     ->title("Cotización {$record->folio} enviada")
                     ->body('El cliente recibió la propuesta en PDF.')
                     ->send();
+            });
+    }
+
+    /**
+     * Cotización ya enviada → «Pendiente de pago»: el cliente verá el botón de
+     * pago en su portal. Paga una sola vez y sólo lo autorizado en esta orden.
+     */
+    private static function authorizeQuoteAction(): Action
+    {
+        return Action::make('autorizarCotizacion')
+            ->label('Habilitar pago')
+            ->icon('heroicon-m-check-badge')
+            ->color('success')
+            ->visible(fn (Order $record) => $record->order_type === OrderType::Quote && $record->status === OrderStatus::Quoted)
+            ->modalHeading('Autorizar cotización y habilitar el pago')
+            ->modalDescription('El cliente podrá pagar desde su portal exactamente este total, con este descuento, una sola vez. No se publica ningún precio especial.')
+            ->schema([
+                DatePicker::make('valid_until')
+                    ->label('Pagar a más tardar el')
+                    ->default(fn (Order $record) => $record->quote_valid_until && ! $record->quoteHasExpired()
+                        ? $record->quote_valid_until
+                        : now()->addDays(15))
+                    ->minDate(now()->startOfDay())
+                    ->required()
+                    ->displayFormat('d/m/Y')
+                    ->helperText('Pasada esta fecha el botón de pago desaparece y la cotización hay que renovarla.'),
+
+                Textarea::make('note')
+                    ->label('Mensaje para el cliente')
+                    ->rows(2)
+                    ->placeholder('Cotización autorizada. Ya puedes pagarla desde tu cuenta.'),
+
+                Checkbox::make('notify')
+                    ->label('Avisar al cliente por correo')
+                    ->default(true),
+            ])
+            ->action(function (Order $record, array $data, AuthorizeQuote $authorize) {
+                try {
+                    $authorize(
+                        order: $record,
+                        author: auth()->user(),
+                        validUntil: $data['valid_until'] ?? null,
+                        note: $data['note'] ?? null,
+                        notifyCustomer: (bool) ($data['notify'] ?? false),
+                    );
+                } catch (\DomainException $e) {
+                    Notification::make()->danger()->title('No se pudo habilitar el pago')->body($e->getMessage())->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->success()
+                    ->title("{$record->folio} pendiente de pago")
+                    ->body('El cliente ya puede pagar desde su portal.')
+                    ->send();
+            });
+    }
+
+    /**
+     * Pago recibido fuera de la plataforma (transferencia, efectivo…): pasa
+     * directo a «Pagado», sin tener que pasar por «Pendiente de pago».
+     */
+    private static function registerPaymentAction(): Action
+    {
+        return Action::make('registrarPago')
+            ->label('Registrar pago')
+            ->icon('heroicon-m-banknotes')
+            ->color('success')
+            ->outlined()
+            ->visible(fn (Order $record) => in_array($record->status, OrderStatus::unpaid(), strict: true))
+            ->modalHeading('Registrar un pago recibido fuera de la plataforma')
+            ->modalDescription('La orden pasa directo a «Pagado» y queda asentado en la bitácora.')
+            ->schema([
+                Select::make('method')
+                    ->label('Forma de pago')
+                    ->options(RegisterOfflinePayment::METHODS)
+                    ->default('transferencia')
+                    ->required(),
+
+                TextInput::make('reference')
+                    ->label('Referencia o folio del pago')
+                    ->maxLength(120)
+                    ->placeholder('Clave de rastreo, folio de depósito…'),
+
+                Textarea::make('note')
+                    ->label('Nota para la bitácora')
+                    ->rows(2),
+
+                Checkbox::make('notify')
+                    ->label('Avisar al cliente por correo')
+                    ->default(true),
+            ])
+            ->action(function (Order $record, array $data, RegisterOfflinePayment $register) {
+                try {
+                    $register(
+                        order: $record,
+                        method: $data['method'],
+                        reference: $data['reference'] ?? null,
+                        author: auth()->user(),
+                        note: $data['note'] ?? null,
+                        notifyCustomer: (bool) ($data['notify'] ?? false),
+                    );
+                } catch (\DomainException $e) {
+                    Notification::make()->danger()->title('No se pudo registrar el pago')->body($e->getMessage())->send();
+
+                    return;
+                }
+
+                Notification::make()->success()->title("{$record->folio} pagado")->send();
             });
     }
 

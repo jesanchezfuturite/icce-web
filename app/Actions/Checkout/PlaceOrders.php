@@ -9,7 +9,9 @@ use App\Models\Product;
 use App\Models\User;
 use App\Support\Cart\Cart;
 use App\Support\Cart\CartLine;
+use Closure;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,22 +28,38 @@ use Illuminate\Support\Facades\DB;
  */
 class PlaceOrders
 {
-    public function __invoke(Cart $cart, CheckoutData $data, ?User $user = null): PlacedOrders
+    /**
+     * `$user` puede ser un cliente ya identificado o una función que lo crea:
+     * así la cuenta nace en la misma transacción que las órdenes y, si algo
+     * falla, no queda una cuenta a medias.
+     *
+     * Los pedidos se registran de uno en uno (candado compartido) y la
+     * transacción se reintenta si MariaDB detecta un deadlock: dos compras
+     * simultáneas peleaban por el último folio y por las mismas filas de
+     * existencia, y una de las dos terminaba en error 500.
+     */
+    public function __invoke(Cart $cart, CheckoutData $data, User|Closure|null $user = null): PlacedOrders
     {
         $purchasable = $cart->purchasable();
         $quotable = $cart->quotable();
 
-        return DB::transaction(function () use ($purchasable, $quotable, $data, $user) {
-            $sale = $purchasable->isNotEmpty()
-                ? $this->createOrder(OrderType::DirectSale, $purchasable, $data, $user)
-                : null;
+        return Cache::lock('checkout:placement', 30)->block(20, fn () => DB::transaction(
+            function () use ($purchasable, $quotable, $data, $user) {
+                // Se resuelve dentro de cada intento: tras un rollback la cuenta no existe
+                $buyer = $user instanceof Closure ? $user() : $user;
 
-            $quote = $quotable->isNotEmpty()
-                ? $this->createOrder(OrderType::Quote, $quotable, $data, $user)
-                : null;
+                $sale = $purchasable->isNotEmpty()
+                    ? $this->createOrder(OrderType::DirectSale, $purchasable, $data, $buyer)
+                    : null;
 
-            return new PlacedOrders($sale, $quote);
-        });
+                $quote = $quotable->isNotEmpty()
+                    ? $this->createOrder(OrderType::Quote, $quotable, $data, $buyer)
+                    : null;
+
+                return new PlacedOrders($sale, $quote, $buyer);
+            },
+            attempts: 3,
+        ));
     }
 
     /** @param Collection<int, CartLine> $lines */

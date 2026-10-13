@@ -20,8 +20,13 @@ class LoginController extends Controller
 {
     private const MAX_ATTEMPTS = 5;
 
-    public function show(): View
+    public function show(Request $request): View
     {
+        // Desde el checkout: tras iniciar sesión se regresa a terminar la compra
+        if ($request->query('volver') === 'checkout') {
+            $request->session()->put('url.intended', route('checkout'));
+        }
+
         return view('pages.auth.login');
     }
 

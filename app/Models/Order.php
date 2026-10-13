@@ -96,6 +96,30 @@ class Order extends Model
         });
     }
 
+    /** La vigencia de la cotización ya pasó (el día de vencimiento todavía vale). */
+    public function quoteHasExpired(): bool
+    {
+        return $this->quote_valid_until !== null && $this->quote_valid_until->copy()->endOfDay()->isPast();
+    }
+
+    /**
+     * ¿Puede el cliente pagar esta orden desde su portal? Sólo una cotización que
+     * un agente autorizó («Pendiente de pago»), vigente, con total por cobrar,
+     * sin una transferencia SPEI ya registrada y que jamás se haya pagado (aunque
+     * alguien la regrese a «Pendiente de pago» por error, no se cobra dos veces). Es la única regla: la vista y la
+     * acción de pago la consultan, nadie la reimplementa.
+     */
+    public function canBePaidOnline(): bool
+    {
+        return $this->order_type === OrderType::Quote
+            && $this->status === OrderStatus::PendingPayment
+            && $this->payment_status !== 'pending'
+            && $this->payment_status !== 'paid'
+            && $this->paid_at === null
+            && (float) $this->total_amount > 0
+            && ! $this->quoteHasExpired();
+    }
+
     public function scopeQuotes(Builder $query): Builder
     {
         return $query->where('order_type', OrderType::Quote);

@@ -3,6 +3,7 @@
 namespace App\Actions\Checkout;
 
 use App\Models\Order;
+use App\Models\User;
 
 /**
  * Resultado de un checkout. Un carrito mixto produce dos órdenes: la parte con
@@ -14,6 +15,8 @@ final readonly class PlacedOrders
     public function __construct(
         public ?Order $sale = null,
         public ?Order $quote = null,
+        /** Dueño de las órdenes; si la cuenta se creó al comprar, es la recién creada. */
+        public ?User $user = null,
     ) {}
 
     /** @return list<Order> */

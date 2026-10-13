@@ -72,6 +72,7 @@ class CarritoHibridoTest extends TestCase
     private function datosValidos(array $extra = []): array
     {
         return array_merge([
+            'checkout_token' => (string) \Illuminate\Support\Str::uuid(),
             'nombre' => 'Ing. Rodrigo Cantú',
             'email' => 'rodrigo@obra.mx',
             'telefono' => '8112345678',
@@ -81,6 +82,8 @@ class CarritoHibridoTest extends TestCase
             'cp' => '64000',
             'metodo_pago' => 'card',
             'tarjeta' => '4242424242424242',
+            'password' => 'Secreto2026',
+            'password_confirmation' => 'Secreto2026',
         ], $extra);
     }
 
@@ -304,7 +307,7 @@ class CarritoHibridoTest extends TestCase
     {
         $this->cart()->add($this->enExistencia, 1);
 
-        $this->post('/checkout', ['nombre' => 'Solo el nombre'])
+        $this->post('/checkout', ['checkout_token' => (string) \Illuminate\Support\Str::uuid(), 'nombre' => 'Solo el nombre'])
             ->assertSessionHasErrors(['email', 'telefono', 'calle', 'ciudad', 'estado', 'cp']);
 
         $this->assertSame(0, Order::count());

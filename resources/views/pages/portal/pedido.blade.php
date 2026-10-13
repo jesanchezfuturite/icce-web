@@ -15,6 +15,44 @@
         </p>
     </x-ui.page-header>
 
+    {{-- Resultado del pago --}}
+    @if(session('pago'))
+        <div class="border-b border-brand-200 bg-brand-50 py-4">
+            <x-ui.container>
+                <p class="text-sm font-semibold text-brand-900" role="status">{{ session('pago') }}</p>
+            </x-ui.container>
+        </div>
+    @endif
+
+    @if($payable)
+        <div class="border-b border-amber-200 bg-amber-50 py-5">
+            <x-ui.container class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <p class="font-display text-base font-extrabold text-amber-950">Tu cotización está autorizada y lista para pagar</p>
+                    <p class="mt-1 text-sm text-amber-900">
+                        Total ${{ number_format((float) $order->total_amount, 2) }} {{ $order->currency }}
+                        @if($order->quote_valid_until)
+                            &middot; págala a más tardar el {{ $order->quote_valid_until->translatedFormat('d \d\e F, Y') }}
+                        @endif
+                    </p>
+                </div>
+                <a href="#pagar" class="rounded-lg bg-carbon-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-carbon-800">Ir a pagar</a>
+            </x-ui.container>
+        </div>
+    @elseif($order->status === \App\Enums\OrderStatus::PendingPayment && $order->payment_status === 'pending')
+        <div class="border-b border-carbon-200 bg-carbon-50 py-4">
+            <x-ui.container>
+                <p class="text-sm text-carbon-700">Ya registramos tu transferencia. En cuanto se acredite el depósito, tu pedido avanza.</p>
+            </x-ui.container>
+        </div>
+    @elseif($order->status === \App\Enums\OrderStatus::PendingPayment)
+        <div class="border-b border-carbon-200 bg-carbon-50 py-4">
+            <x-ui.container>
+                <p class="text-sm text-carbon-700">La vigencia de esta cotización terminó. Pide a tu agente que la renueve para poder pagarla.</p>
+            </x-ui.container>
+        </div>
+    @endif
+
     {{-- 7.2 Timeline de rastreo --}}
     <section class="border-b border-carbon-200 py-12">
         <x-ui.container>
@@ -108,6 +146,56 @@
                         </div>
                     </dl>
                 </div>
+
+                @if($payable)
+                    <form method="post" action="{{ route('portal.pagar', $order) }}" id="pagar"
+                          x-data="{ metodo: '{{ old('metodo_pago', 'card') }}', enviando: false }"
+                          @submit="enviando = true" @pageshow.window="enviando = false"
+                          class="mt-4 scroll-mt-32 rounded-2xl border-2 border-brand-500 p-6">
+                        @csrf
+                        <h2 class="font-display text-sm font-bold uppercase tracking-[0.16em] text-carbon-950">Pagar esta cotización</h2>
+                        <p class="mt-2 text-xs leading-relaxed text-carbon-500">
+                            El precio y el descuento sólo valen para esta cotización y se pagan una sola vez.
+                        </p>
+
+                        @if($errors->any())
+                            <div class="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800" role="alert">
+                                @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
+                            </div>
+                        @endif
+
+                        @if($gateway === 'simulado')
+                            <p class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+                                <strong class="font-semibold">Pasarela en modo simulado.</strong> No se cobra nada real.
+                            </p>
+                        @endif
+
+                        <div class="mt-4 space-y-2">
+                            @foreach($methods as $value => $label)
+                                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-carbon-300 p-3 transition hover:border-carbon-950">
+                                    <input type="radio" name="metodo_pago" value="{{ $value }}" x-model="metodo" class="size-4 accent-brand-600">
+                                    <span class="text-sm font-semibold text-carbon-900">{{ $label }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+
+                        <div x-show="metodo === 'card'" x-cloak class="mt-4">
+                            <label for="tarjeta" class="block text-sm font-semibold text-carbon-900">Número de tarjeta</label>
+                            <input type="text" id="tarjeta" name="tarjeta" value="{{ old('tarjeta') }}"
+                                   inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"
+                                   class="mt-2 h-12 w-full rounded-lg border border-carbon-300 bg-white px-4 text-sm text-carbon-900 outline-none transition placeholder:text-carbon-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25">
+                        </div>
+
+                        <p x-show="metodo === 'spei'" x-cloak class="mt-4 text-xs leading-relaxed text-carbon-600">
+                            Registramos tu transferencia y tu pedido avanza en cuanto se acredite el depósito.
+                        </p>
+
+                        <x-ui.button type="submit" size="lg" class="mt-5 w-full" x-bind:disabled="enviando">
+                            <span x-show="! enviando">Pagar ${{ number_format((float) $order->total_amount, 2) }}</span>
+                            <span x-show="enviando" x-cloak>Procesando pago…</span>
+                        </x-ui.button>
+                    </form>
+                @endif
 
                 @if($order->shipping_address)
                     <div class="mt-4 rounded-2xl border border-carbon-200 p-6">

@@ -59,30 +59,41 @@ class AppServiceProvider extends ServiceProvider
             $view->with('navCategories', Cache::remember(
                 Category::NAV_CACHE_KEY,
                 now()->addHour(),
-                fn () => Category::query()
-                    ->roots()
-                    ->active()
-                    ->with([
-                        'children' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
-                        'children.children' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
-                    ])
-                    ->orderBy('sort_order')
-                    ->get()
-                    ->map(fn (Category $root) => [
-                        'name' => $root->name,
-                        'slug' => $root->slug,
-                        'children' => $root->children
-                            ->map(fn (Category $child) => [
-                                'name' => $child->name,
-                                'slug' => $child->slug,
-                                'children' => $child->children
-                                    ->map(fn (Category $leaf) => ['name' => $leaf->name, 'slug' => $leaf->slug])
-                                    ->all(),
-                            ])
-                            ->all(),
-                    ])
-                    ->all(),
+                fn () => $this->navigationTree(),
             ));
         });
+    }
+
+    /**
+     * Árbol de categorías activas para el menú, hasta MAX_DEPTH niveles, con una
+     * sola consulta. Arreglos de primitivas: se cachea (ver config/cache.php).
+     *
+     * @return list<array{name: string, slug: string, children: list<array>}>
+     */
+    private function navigationTree(): array
+    {
+        $porPadre = Category::query()
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['id', 'parent_id', 'name', 'slug'])
+            ->groupBy(fn (Category $category) => $category->parent_id ?? 0);
+
+        $construir = function (int $padreId, int $nivel) use (&$construir, $porPadre): array {
+            if ($nivel > Category::MAX_DEPTH) {
+                return [];
+            }
+
+            return ($porPadre[$padreId] ?? collect())
+                ->map(fn (Category $category) => [
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'children' => $construir($category->id, $nivel + 1),
+                ])
+                ->values()
+                ->all();
+        };
+
+        return $construir(0, 1);
     }
 }

@@ -25,9 +25,17 @@ Tu pedido **{{ $order->folio }}** pasó a **{{ $order->status->label() }}**.
 > {{ $note }}
 @endif
 
+@if($order->canBePaidOnline())
+Tu cotización está autorizada: puedes pagarla desde tu cuenta con el precio acordado, **una sola vez**@if($order->quote_valid_until) y a más tardar el **{{ $order->quote_valid_until->translatedFormat('d \d\e F, Y') }}**@endif.
+
+<x-mail::button :url="route('portal.pedido', $order)">
+Pagar mi cotización
+</x-mail::button>
+@else
 <x-mail::button :url="url('/portal')">
 Ver el detalle en mi cuenta
 </x-mail::button>
+@endif
 
 Gracias,<br>
 **ICCE Rentas y Servicios**

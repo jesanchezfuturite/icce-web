@@ -25,8 +25,10 @@
                 </div>
             @endif
 
-            <form method="post" action="{{ route('checkout.store') }}" class="grid gap-10 lg:grid-cols-[1fr_22rem] lg:gap-12">
+            <form method="post" action="{{ route('checkout.store') }}" class="grid gap-10 lg:grid-cols-[1fr_22rem] lg:gap-12"
+                  x-data="{ enviando: false }" @submit="enviando = true" @pageshow.window="enviando = false">
                 @csrf
+                <input type="hidden" name="checkout_token" value="{{ $checkoutToken }}">
 
                 <div class="space-y-10">
                     {{-- Datos de contacto --}}
@@ -56,6 +58,44 @@
                             @endforeach
                         </div>
                     </fieldset>
+
+                    {{-- Cuenta: se pide hasta aquí, justo antes de pagar --}}
+                    @guest
+                        <fieldset>
+                            <legend class="font-display text-lg font-extrabold text-carbon-950">Crea tu cuenta</legend>
+                            <p class="mt-2 text-sm leading-relaxed text-carbon-600">
+                                La necesitas para dar seguimiento a tu pedido y, si es cotización,
+                                pagarla cuando un agente la autorice. Usamos el correo que capturaste arriba.
+                            </p>
+
+                            <div class="mt-6 grid gap-5 sm:grid-cols-2">
+                                @foreach([
+                                    ['password', 'Contraseña (mínimo 8 caracteres)'],
+                                    ['password_confirmation', 'Confirma tu contraseña'],
+                                ] as [$name, $label])
+                                    <div>
+                                        <label for="{{ $name }}" class="block text-sm font-semibold text-carbon-900">
+                                            {{ $label }} <span class="text-brand-700">*</span>
+                                        </label>
+                                        <input type="password" id="{{ $name }}" name="{{ $name }}" required minlength="8"
+                                               autocomplete="new-password"
+                                               @class([
+                                                   'mt-2 h-12 w-full rounded-lg border bg-white px-4 text-sm text-carbon-900 outline-none transition focus:ring-2 focus:ring-brand-500/25',
+                                                   'border-carbon-300 focus:border-brand-500' => ! $errors->has($name),
+                                                   'border-red-400' => $errors->has($name),
+                                               ])>
+                                        @error($name)<p class="mt-1.5 text-xs text-red-700">{{ $message }}</p>@enderror
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <p class="mt-4 text-sm text-carbon-600">
+                                ¿Ya tienes cuenta?
+                                <a href="{{ route('login', ['volver' => 'checkout']) }}" class="font-semibold text-brand-700 underline transition hover:text-brand-800">Inicia sesión</a>
+                                y regresas aquí con tu carrito.
+                            </p>
+                        </fieldset>
+                    @endguest
 
                     {{-- Dirección --}}
                     <fieldset>
@@ -101,7 +141,7 @@
                             @if($gateway === 'simulado')
                                 <p class="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
                                     <strong class="font-semibold">Pasarela en modo simulado.</strong>
-                                    No se cobra nada real. Cualquier número de tarjeta se aprueba;
+                                    No se cobra nada real. Cualquier número de tarjeta válido (13 a 19 dígitos) se aprueba;
                                     usa <code class="rounded bg-amber-100 px-1">4000 0000 0000 0002</code> para
                                     provocar un rechazo y ver ese camino.
                                 </p>
@@ -189,8 +229,9 @@
                             </div>
                         @endif
 
-                        <x-ui.button type="submit" size="lg" class="mt-6 w-full">
-                            {{ $needsPayment ? 'Confirmar y pagar' : 'Enviar solicitud' }}
+                        <x-ui.button type="submit" size="lg" class="mt-6 w-full" x-bind:disabled="enviando">
+                            <span x-show="! enviando">{{ $needsPayment ? 'Confirmar y pagar' : 'Enviar solicitud' }}</span>
+                            <span x-show="enviando" x-cloak>Procesando…</span>
                         </x-ui.button>
 
                         <p class="mt-4 text-xs leading-relaxed text-carbon-500">
