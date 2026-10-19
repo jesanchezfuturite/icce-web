@@ -5,13 +5,17 @@ namespace App\Filament\Resources\Orders\Schemas;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\UserRole;
+use App\Models\Order;
 use App\Models\User;
+use App\Support\QuoteTotals;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 /**
@@ -69,7 +73,7 @@ class OrderForm
                     ->columnSpanFull(),
 
                 Section::make('Partidas')
-                    ->description('Ajusta el precio unitario para la propuesta. El precio de lista se conserva.')
+                    ->description('Ajusta el precio unitario para la propuesta; el precio de lista se conserva. El importe y el total se actualizan al teclear, y se guardan con «Guardar cambios».')
                     ->schema([
                         Repeater::make('items')
                             ->relationship()
@@ -84,9 +88,18 @@ class OrderForm
                                     ->numeric()
                                     ->minValue(0)
                                     ->prefix('$')
-                                    ->placeholder('Sin ajuste'),
+                                    ->placeholder('Sin ajuste')
+                                    ->live(onBlur: true)
+                                    ->disabled(fn ($livewire) => ! self::editable($livewire)),
+                                TextEntry::make('importe')
+                                    ->label('Importe')
+                                    ->weight('bold')
+                                    ->state(fn (Get $get) => self::money(QuoteTotals::lineTotal(
+                                        $get('quantity'),
+                                        QuoteTotals::effectivePrice($get('quoted_unit_price'), $get('unit_price')),
+                                    ))),
                             ])
-                            ->columns(6)
+                            ->columns(7)
                             ->addable(false)
                             ->deletable(false)
                             ->reorderable(false)
@@ -95,18 +108,31 @@ class OrderForm
                     ->columnSpanFull(),
 
                 Section::make('Logística y totales')
+                    ->description(fn ($livewire) => self::editable($livewire)
+                        ? null
+                        : 'Los precios y el descuento sólo se ajustan mientras la cotización no esté autorizada ni pagada.')
                     ->schema([
                         DatePicker::make('estimated_delivery_date')->label('Entrega estimada')->displayFormat('d/m/Y'),
                         TextInput::make('tracking_number')->label('Guía'),
                         TextInput::make('carrier')->label('Transporte'),
                         DatePicker::make('quote_valid_until')->label('Vigencia de cotización')->displayFormat('d/m/Y'),
 
-                        TextInput::make('subtotal')->label('Subtotal')->prefix('$')->disabled(),
+                        TextEntry::make('subtotal_vista')
+                            ->label('Subtotal')
+                            ->state(fn (Get $get, $livewire) => self::money(self::totals($get, $livewire)->subtotal)),
                         TextInput::make('discount_amount')->label('Descuento')->prefix('$')->numeric()->minValue(0)
                             ->default(0)
+                            ->live(onBlur: true)
+                            ->disabled(fn ($livewire) => ! self::editable($livewire))
                             ->dehydrateStateUsing(fn ($state) => $state ?? 0),
-                        TextInput::make('tax_amount')->label('IVA')->prefix('$')->disabled(),
-                        TextInput::make('total_amount')->label('Total')->prefix('$')->disabled(),
+                        TextEntry::make('iva_vista')
+                            ->label('IVA')
+                            ->state(fn (Get $get, $livewire) => self::money(self::totals($get, $livewire)->tax)),
+                        TextEntry::make('total_vista')
+                            ->label('Total con descuento')
+                            ->weight('bold')
+                            ->size('lg')
+                            ->state(fn (Get $get, $livewire) => self::money(self::totals($get, $livewire)->total)),
                     ])
                     ->columns(4)
                     ->columnSpanFull(),
@@ -121,5 +147,45 @@ class OrderForm
                     ->collapsible()
                     ->columnSpanFull(),
             ]);
+    }
+
+    private static function order($livewire): ?Order
+    {
+        $record = method_exists($livewire, 'getRecord') ? $livewire->getRecord() : null;
+
+        return $record instanceof Order ? $record : null;
+    }
+
+    private static function editable($livewire): bool
+    {
+        return self::order($livewire)?->pricesAreEditable() ?? false;
+    }
+
+    /**
+     * Totales para mostrar. Si los precios se pueden ajustar se calculan en vivo
+     * con lo que hay en el formulario; si no, se muestra lo ya guardado.
+     */
+    private static function totals(Get $get, $livewire): QuoteTotals
+    {
+        if (self::editable($livewire)) {
+            return QuoteTotals::calculate(
+                collect($get('items') ?? [])->map(fn (array $item) => [
+                    $item['quantity'] ?? 0,
+                    QuoteTotals::effectivePrice($item['quoted_unit_price'] ?? null, $item['unit_price'] ?? null),
+                ]),
+                $get('discount_amount'),
+            );
+        }
+
+        $order = self::order($livewire);
+        $subtotal = (float) $order?->subtotal;
+        $discount = (float) $order?->discount_amount;
+
+        return new QuoteTotals($subtotal, $discount, round($subtotal - $discount, 2), (float) $order?->tax_amount, (float) $order?->total_amount);
+    }
+
+    public static function money(float $amount): string
+    {
+        return '$'.number_format($amount, 2).' MXN';
     }
 }

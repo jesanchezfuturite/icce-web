@@ -21,7 +21,10 @@ use Illuminate\Support\Facades\Mail;
  */
 class SendQuote
 {
-    public function __construct(private readonly ChangeOrderStatus $changeStatus) {}
+    public function __construct(
+        private readonly ChangeOrderStatus $changeStatus,
+        private readonly RecalculateQuote $recalculate,
+    ) {}
 
     public function __invoke(
         Order $order,
@@ -30,30 +33,10 @@ class SendQuote
         ?string $validUntil = null,
         float $discountAmount = 0,
     ): Order {
-        $order->loadMissing('items');
-
         DB::transaction(function () use ($order, $discountAmount, $validUntil) {
-            $subtotal = 0.0;
+            ($this->recalculate)($order, $discountAmount);
 
-            foreach ($order->items as $item) {
-                $unit = (float) ($item->quoted_unit_price ?? $item->unit_price);
-                $lineTotal = round($unit * $item->quantity, 2);
-
-                $item->update(['line_total' => $lineTotal]);
-                $subtotal += $lineTotal;
-            }
-
-            $subtotal = round($subtotal, 2);
-            $discount = min(round($discountAmount, 2), $subtotal);
-            $taxable = $subtotal - $discount;
-
-            $order->update([
-                'subtotal' => $subtotal,
-                'discount_amount' => $discount,
-                'tax_amount' => round($taxable * (float) config('icce.tax_rate'), 2),
-                'total_amount' => round($taxable * (1 + (float) config('icce.tax_rate')), 2),
-                'quote_valid_until' => $validUntil ?: now()->addDays(15),
-            ]);
+            $order->update(['quote_valid_until' => $validUntil ?: now()->addDays(15)]);
         });
 
         $order->refresh()->load('items');

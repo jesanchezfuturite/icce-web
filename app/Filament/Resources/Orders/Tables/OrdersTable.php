@@ -9,8 +9,10 @@ use App\Actions\Orders\SendQuote;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\UserRole;
+use App\Filament\Resources\Orders\Schemas\OrderForm;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\QuoteTotals;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -19,11 +21,14 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -222,7 +227,13 @@ class OrdersTable
                     ->minValue(0)
                     ->prefix('$')
                     ->default(fn (Order $record) => (float) $record->discount_amount)
+                    ->live(debounce: 400)
                     ->helperText('Los ajustes por partida se editan en el detalle de la orden.'),
+
+                TextEntry::make('resumen')
+                    ->label('Esto recibirá el cliente')
+                    ->html()
+                    ->state(fn (Get $get, Order $record) => self::quoteSummary($record, $get('discount_amount'))),
 
                 DatePicker::make('valid_until')
                     ->label('Vigencia de la propuesta')
@@ -360,6 +371,35 @@ class OrdersTable
 
                 Notification::make()->success()->title("{$record->folio} pagado")->send();
             });
+    }
+
+    /** Desglose del envío: lo mismo que se guardará y verá el cliente (QuoteTotals). */
+    public static function quoteSummary(Order $record, mixed $discount): HtmlString
+    {
+        $totals = QuoteTotals::calculate(
+            $record->items()->get()->map(fn ($item) => [
+                $item->quantity,
+                QuoteTotals::effectivePrice($item->quoted_unit_price, $item->unit_price),
+            ]),
+            $discount,
+        );
+
+        $fila = fn (string $etiqueta, string $valor, bool $fuerte = false) => sprintf(
+            '<div style="display:flex;justify-content:space-between;gap:1rem;padding:.25rem 0;%s"><span>%s</span><span style="font-variant-numeric:tabular-nums">%s</span></div>',
+            $fuerte ? 'border-top:1px solid rgba(128,128,128,.35);margin-top:.35rem;padding-top:.6rem;font-weight:700;font-size:1.05rem' : '',
+            e($etiqueta),
+            e($valor),
+        );
+
+        return new HtmlString(
+            '<div style="min-width:16rem">'
+            .$fila('Subtotal', OrderForm::money($totals->subtotal))
+            .($totals->discount > 0 ? $fila('Descuento', '−'.OrderForm::money($totals->discount)) : '')
+            .($totals->discount > 0 ? $fila('Subtotal con descuento', OrderForm::money($totals->taxable)) : '')
+            .$fila('IVA ('.round((float) config('icce.tax_rate') * 100).'%)', OrderForm::money($totals->tax))
+            .$fila('Total con descuento', OrderForm::money($totals->total), fuerte: true)
+            .'</div>'
+        );
     }
 
     private static function downloadQuoteAction(): Action

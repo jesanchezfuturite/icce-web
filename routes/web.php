@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CatalogController;
@@ -60,6 +61,8 @@ Route::get('/marcas/{brand:slug}', [BrandController::class, 'show'])->name('marc
 Route::middleware('guest')->group(function () {
     Route::get('/ingresar', [LoginController::class, 'show'])->name('login');
     Route::post('/ingresar', [LoginController::class, 'store']);
+    Route::get('/registro', [RegisterController::class, 'show'])->name('register');
+    Route::post('/registro', [RegisterController::class, 'store'])->middleware('throttle:10,1');
 });
 
 Route::post('/salir', [LoginController::class, 'destroy'])->name('logout');

@@ -96,6 +96,17 @@ class Order extends Model
         });
     }
 
+    /**
+     * ¿Se pueden ajustar precios y descuento? Sólo en una cotización que aún no
+     * se autoriza para pago: cambiar importes de algo ya autorizado o pagado
+     * dejaría la orden diciendo una cosa y el cobro otra.
+     */
+    public function pricesAreEditable(): bool
+    {
+        return $this->order_type === OrderType::Quote
+            && in_array($this->status, [OrderStatus::Pending, OrderStatus::Quoted], strict: true);
+    }
+
     /** La vigencia de la cotización ya pasó (el día de vencimiento todavía vale). */
     public function quoteHasExpired(): bool
     {

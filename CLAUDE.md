@@ -120,6 +120,7 @@ descuenta existencia** (las cotizaciones no la apartan): el surtido lo confirma 
 
 ### Comprar o cotizar exige cuenta, pero se pide al final
 
+También se puede crear la cuenta antes, desde `/registro` (enlazado en el login).
 El carrito se arma sin sesión. En el checkout, un visitante ve «Crea tu cuenta»
 (contraseña + confirmación) o «Inicia sesión» (`/ingresar?volver=checkout`, regresa
 al checkout con el carrito). `CheckoutController::store` crea el `User` (rol cliente)

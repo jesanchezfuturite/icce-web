@@ -47,10 +47,10 @@
 
                 <p class="mt-8 border-t border-white/10 pt-6 text-sm text-white/50">
                     ¿Aún no tienes cuenta?
-                    Se crea sola al hacer tu primera compra o cotización.
-                    <a href="{{ route('catalogo.index') }}" class="font-semibold text-brand-400 transition hover:text-brand-300">
-                        Explora el catálogo
-                    </a>.
+                    <a href="{{ route('register') }}" class="font-semibold text-brand-400 transition hover:text-brand-300">
+                        Crea una aquí
+                    </a>
+                    y disfruta de nuestro catálogo.
                 </p>
             </div>
 
