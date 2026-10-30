@@ -46,6 +46,12 @@
                 <span class="text-sm font-semibold text-carbon-600">Cotización a medida</span>
             @else
                 <div>
+                    @if($product->hasDiscount())
+                        <p class="text-xs text-carbon-400">
+                            <s>${{ number_format((float) $product->compare_at_price, 2) }}</s>
+                            <span class="ml-1 rounded bg-brand-500/15 px-1.5 py-0.5 font-semibold text-brand-800">-{{ $product->discountPercent() }}%</span>
+                        </p>
+                    @endif
                     <span class="font-display text-lg font-extrabold text-carbon-950">
                         ${{ number_format((float) $product->price, 2) }}
                     </span>

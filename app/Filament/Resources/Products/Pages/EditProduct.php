@@ -10,6 +10,12 @@ class EditProduct extends EditRecord
 {
     protected static string $resource = ProductResource::class;
 
+    /** Si quedaron imágenes pero ninguna principal, la primera lo es. */
+    protected function afterSave(): void
+    {
+        $this->getRecord()->ensurePrimaryImage();
+    }
+
     protected function getHeaderActions(): array
     {
         return [

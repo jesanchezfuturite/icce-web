@@ -100,6 +100,12 @@
                 @endif
 
                 <div class="mt-8 border-y border-carbon-200 py-6">
+                    @if($product->hasDiscount())
+                        <p class="text-sm text-carbon-500">
+                            Antes <s>${{ number_format((float) $product->compare_at_price, 2) }}</s>
+                            <span class="ml-2 rounded bg-brand-500/15 px-2 py-0.5 text-xs font-bold text-brand-800">Ahorras {{ $product->discountPercent() }}%</span>
+                        </p>
+                    @endif
                     <p class="font-display text-3xl font-extrabold text-carbon-950">
                         ${{ number_format((float) $product->price, 2) }}
                         <span class="text-sm font-semibold text-carbon-500">MXN / {{ $product->unit }}</span>

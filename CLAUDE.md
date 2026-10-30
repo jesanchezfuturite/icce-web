@@ -128,6 +128,21 @@ al checkout con el carrito). `CheckoutController::store` crea el `User` (rol cli
 medias. No hay verificación de correo ni vinculación automática de pedidos viejos
 hechos como invitado con ese mismo correo.
 
+### Imágenes y fichas de producto se suben desde el admin
+
+Las imágenes se suben en la edición del producto (`images`, repetidor con
+`FileUpload`) a `public/images/productos/subidas/`, disco `site`.
+`ProductImageOptimizer` (GD) las deja en **WebP de 400 KB o menos** y lado mayor de
+1600 px: se acepta hasta 10 MB y se reduce al guardar; un WebP que ya cumple se
+guarda tal cual. Sin GD con WebP (`isAvailable()` falso) el formulario exige
+archivos de 400 KB o menos sin tocarlos. Sólo se borran archivos de la carpeta
+`subidas` y sólo si ninguna otra imagen los usa: las originales del catálogo y los
+PDF de `public/fichas` **nunca** se borran (varios productos pueden compartirlos).
+Las fichas técnica y de seguridad son subida de PDF (10 MB) a `public/fichas`.
+`specs` es un `KeyValue` (el dato interno `imagen_origen` se oculta y se conserva).
+Un `compare_at_price` mayor al precio se muestra tachado con el % de ahorro
+(`Product::hasDiscount()`).
+
 ### La pasarela vive tras una interfaz
 
 `App\Payments\Contracts\PaymentGateway`. El driver `simulado` recorre el checkout

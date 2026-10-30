@@ -59,6 +59,37 @@ class Product extends Model
         return $this->hasMany(ProductImage::class)->orderBy('sort_order');
     }
 
+    /** Hay un precio de comparación mayor al actual: se muestra tachado como «antes». */
+    public function hasDiscount(): bool
+    {
+        $compare = (float) $this->compare_at_price;
+        $price = (float) $this->price;
+
+        return $price > 0 && $compare > $price;
+    }
+
+    /** Porcentaje de ahorro frente al precio de comparación (0 si no hay oferta). */
+    public function discountPercent(): int
+    {
+        return $this->hasDiscount()
+            ? (int) round((1 - (float) $this->price / (float) $this->compare_at_price) * 100)
+            : 0;
+    }
+
+    /** Si el producto tiene imágenes pero ninguna principal, la primera lo es. */
+    public function ensurePrimaryImage(): void
+    {
+        $images = ProductImage::query()->where('product_id', $this->getKey());
+
+        if ((clone $images)->where('is_primary', true)->exists()) {
+            return;
+        }
+
+        $first = (clone $images)->orderBy('sort_order')->orderBy('id')->first();
+
+        $first?->update(['is_primary' => true]);
+    }
+
     /** @return HasOne<ProductImage, $this> */
     public function primaryImage(): HasOne
     {
