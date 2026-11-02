@@ -178,10 +178,14 @@ class ProductForm
                     ->required(),
                 TextInput::make('meta_title')
                     ->label('Título para buscadores')
-                    ->default(null),
-                TextInput::make('meta_description')
+                    ->default(null)
+                    ->helperText('Máximo 191 caracteres. Para Google conviene que no pase de unos 60.'),
+                Textarea::make('meta_description')
                     ->label('Descripción para buscadores')
-                    ->default(null),
+                    ->rows(3)
+                    ->default(null)
+                    ->helperText('Máximo 255 caracteres. Google muestra unos 155, así que lo ideal es una o dos frases cortas.')
+                    ->columnSpanFull(),
             ]);
     }
 

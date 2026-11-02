@@ -8,6 +8,9 @@ use App\Payments\Gateways\OpenpayGateway;
 use App\Payments\Gateways\SimulatedGateway;
 use App\Payments\Gateways\StripeGateway;
 use App\Support\Cart\Cart;
+use App\Support\ColumnLength;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
@@ -42,7 +45,26 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        $this->limitAdminTextFieldsToTheirColumns();
+
         $this->shareNavigation();
+    }
+
+    /**
+     * Todo campo de texto del backoffice se limita al largo de su columna.
+     * Sin esto, pasarse de largo no se avisa en el formulario: la base corta el
+     * texto y el guardado termina en un error 500. Un `->maxLength()` explícito
+     * en un formulario manda sobre este valor por omisión.
+     */
+    private function limitAdminTextFieldsToTheirColumns(): void
+    {
+        TextInput::configureUsing(fn (TextInput $input) => $input->maxLength(
+            fn (TextInput $component) => ColumnLength::forComponent($component),
+        ));
+
+        Textarea::configureUsing(fn (Textarea $textarea) => $textarea->maxLength(
+            fn (Textarea $component) => ColumnLength::forComponent($component),
+        ));
     }
 
     /**
